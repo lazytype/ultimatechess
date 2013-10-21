@@ -9,6 +9,6 @@ Ultimate Chess is a variant of chess inspired by [Ultimate Tic-Tac-Toe](http://m
 
 ## Run the server
 
-* Easy as `python server.py --port=8888
+* Easy as `python server.py --port=8888`
 
 ## To be continued...
