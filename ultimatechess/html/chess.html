@@ -1,0 +1,388 @@
+<!doctype html>
+<html>
+  <head>
+    <link href='http://fonts.googleapis.com/css?family=Ceviche+One' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="../css/chessboard.min.css" />
+    <style type="text/css">
+      body {
+        background-image: url("img/mooning.png");
+        background-repeat: repeat;
+        margin: 0px;
+        text-align: center;
+        vertical-align: middle;
+      }
+
+      div#navbar {
+        background-color: #c41200;
+        border-bottom: 1px solid darkred;
+        height: 45px;
+        box-shadow: 0px 4px 4px darkgray;
+
+        font-family: 'Ceviche One', cursive;
+        font-size: 40px;
+        color: #f0f0f0;
+        text-shadow: 1px 1px 8px darkred;
+      }
+
+      #form-container {
+        margin-top: 15px;
+      }
+
+      #game-label {
+        margin-top: 15px;
+        display: none;
+        visibility: hidden;
+      }
+
+      table {
+        margin-top: 5px;
+        margin-bottom: 5px;
+        background-repeat: repeat;
+        border-spacing: 8px;
+      }
+
+      td {
+        border: 4px solid;
+        border-radius: 4px;
+        padding-right:0px;
+      }
+
+      td#top-left:not(.unselected) {
+        border-color: red;
+        background-color: red;
+        box-shadow: 0px 0px 16px red;
+
+      }
+
+      td#top-right:not(.unselected) {
+        border-color: darkblue;
+        background-color: darkblue;
+        box-shadow: 0px 0px 16px darkblue;
+      }
+
+      td#bottom-left:not(.unselected) {
+        border-color: green;
+        background-color: green;
+        box-shadow: 0px 0px 16px green;
+      }
+
+      td#bottom-right:not(.unselected){
+        border-color: gold;
+        background-color: gold;
+        box-shadow: 0px 0px 16px gold ;
+      }
+
+      td div {
+        margin: auto;
+      }
+
+      #move-waiter, #opp-waiter {
+        margin-bottom: 15px;
+        display: none;
+      }
+
+      .unselected.white {
+        border-color: white;
+        background-color: white;
+        box-shadow: 0px 0px 0px white;
+      }
+
+      .unselected.black {
+        border-color: black;
+        background-color: black;
+        box-shadow: 0px 0px 0px black;
+      }
+
+    </style>    
+  </head>
+  <body>
+    <div id="navbar">
+      Ultimate Chess
+    </div>
+    <div id="form-container">
+      <form id="game-form" action="javascript:createGame()">
+        <big>Create / Join Game:</big>
+        <input name="input" placeholder="Game name" size="80"></input>
+        <input type="submit"></input>
+      </form>
+    </div>
+    <div id="game-label">
+      <big>Playing Game: </big>
+    </div>
+
+    <table style="margin-left: auto; margin-right: auto; ">
+      <tr>
+        <td id="top-left" class="board">
+          <div id="board1" style="float: left; width: 320px"></div>
+        </td>
+        <td id="top-right" class="board">
+          <div id="board2" style="float: left; width: 320px"></div>
+        </td>
+      </tr>
+      <tr>
+        <td id="bottom-left" class="board">
+          <div id="board3" style="float: left; width: 320px"></div>
+        </td>
+        <td id="bottom-right" class="board">
+          <div id="board4" style="float: left; width: 320px"></div>
+        </td>
+      </tr>
+    </table>
+    <div id="move-waiter">
+      <img src="../html/img/loading.gif" style="width:16px; vertical-align:baseline">
+      <big>Waiting for Opponent to Move</big>
+    </div>
+    <div id="opp-waiter">
+      <img src="../html/img/loading.gif" style="width:16px; vertical-align:baseline">
+      <big>Waiting for an Opponent to Join</big>
+    </div>
+    <script src="../js/jquery.min.js"></script>
+    <script src="../js/jquery-ui.min.js"></script>
+    <script src="../js/jquery.animate-shadow-min.js"></script>
+    <script src="../js/chess.min.js"></script>  
+    <script src="../js/chessboard.min.js"></script>
+    <script>
+      function glowBox(id, color) {
+
+        console.log('glowing: '+id)
+
+        $('.board').addClass('unselected');
+        if (color === 'w') {
+          $('.board').addClass('white').removeClass('black');
+        } else {
+          $('.board').addClass('black').removeClass('white');
+        }
+
+        $('#' + id).parent().removeClass('unselected').removeClass('white').removeClass('black');
+        // var $parent = $('#' + id).parent();
+        // var shadow = $parent.css('box-shadow');
+        // var color = $parent.css('border-color');
+        // var backgroundColor = $parent.css('background-color');
+
+        // $parent.animate({
+        //   backgroundColor: '#63D1F4',
+        //   borderColor: '#63D1F4',
+        //   boxShadow: '#63D1F4 0px 0px 40px'
+        // }, 0);
+
+        return function() {
+          return;
+          $parent.css('box-shadow', shadow);
+          $parent.css('border-color', color);
+          $parent.css('background-color', backgroundColor);
+        }
+      }
+
+      function getRGB(color) {
+        var matcher = color.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+        if (!matcher) {
+          matcher = color.match(/^#([a-zA-Z0-9]{2})([a-zA-Z0-9]{2})([a-zA-Z0-9]{2})$/);
+          if (!matcher) {
+            return [0, 0, 0];
+          }
+          return [parseInt(matcher[1], 16), parseInt(matcher[2], 16), parseInt(matcher[3], 16)];
+        }
+
+        return [parseInt(matcher[1]), parseInt(matcher[2]), parseInt(matcher[3])];
+      }
+
+      function mixColor(intoColor, color) {
+        var rgb1 = getRGB(color);
+        var rgb2 = getRGB(intoColor);
+
+        return 'rgb(' + [
+          Math.round((rgb1[0] + 3*rgb2[0])/4),
+          Math.round((rgb1[1] + 3*rgb2[1])/4),
+          Math.round((rgb1[2] + 3*rgb2[2])/4),
+        ].join(',') + ')';
+      }
+
+      function colorBoard(id) {
+        for (var i = 0; i < 8; i++) {
+          for (var j = 0; j < 8; j++) {
+            var letter = 'abcdefgh'[i];
+            var number = '12345678'[j];
+            var square = $('#' +id +' [data-square="' + letter + number + '"]');
+            if (i < 4 && j < 4) {
+              // green #008000
+              square.css('color', mixColor(square.css('color'), '#008000'));
+              square.css('background-color', mixColor(square.css('background-color'), '#008000'));
+            } else if (i < 4) {
+              // red #ff0000
+              square.css('color', mixColor(square.css('color'), '#ff0000'));
+              square.css('background-color', mixColor(square.css('background-color'), '#ff0000'));
+            } else if (j < 4) {
+              // gold #ffd700
+              square.css('color', mixColor(square.css('color'), '#ffd700'));
+              square.css('background-color', mixColor(square.css('background-color'), '#ffd700'));
+            } else {
+              // darkblue #00008b
+              square.css('color', mixColor(square.css('color'), '#00008b'));
+              square.css('background-color', mixColor(square.css('background-color'), '#00008b'));
+            }
+          }
+        }
+
+      }
+
+      // only allow pieces to be dragged when the board is oriented
+      // in their direction
+      var onDragStart = function(source, piece, position, orientation) {
+        return; // turned off until flipping works
+        if ((orientation === 'white' && piece.search(/^w/) === -1) ||
+            (orientation === 'black' && piece.search(/^b/) === -1)) {
+          return false;
+        }
+      };
+
+      function ChessGame(id) {
+        var game = {id: id};
+        var onDrop = function(source, target, piece, newPos, oldPos, orientation) {
+          var index;
+          for (index = 0; index < GLOBAL.GAMES.length; index++) {
+            if (GLOBAL.GAMES[index] === game) {
+              break;
+            }
+          }
+          console.log('source: ' + source);
+          console.log('target: ' + target);
+          console.log('piece: ' + piece);
+
+          console.log('orientation: ' + orientation);
+
+          SOCKET.send(JSON.stringify({name: GAME_NAME, index: index, move: {from: source, to: target}}));
+
+          var move = game.logic.move({from: source, to: target});
+          if (move === null) {
+            return 'snapback';
+          } else {
+            for (var i = 0; i < GLOBAL.GAMES.length; i++) {
+              GLOBAL.GAMES[i].cfg.draggable = false;     
+            }
+            $('#move-waiter').show();
+          }
+
+          game.board.position(game.logic.fen().split(' ')[0], false);
+        };
+
+        game.cfg = {
+          draggable: true,
+          onDragStart: onDragStart,
+          onDrop: onDrop,
+          dropOffBoard: 'snapback',
+          showNotation: false,
+          // position: 'start'
+        };
+
+        game.board = new ChessBoard(id, game.cfg);
+        game.logic = new Chess();
+
+        colorBoard(id);
+        return game;
+      }
+
+      ChessGame.createAndRegister = function(id) {
+        var game = new ChessGame(id);
+        GLOBAL.GAMES.push(game);
+      };
+
+      function createGame() {
+        GAME_NAME = document.getElementById('game-form').input.value;
+        SOCKET = new WebSocket('ws://' + document.location.host + '/ws');
+        SOCKET.onmessage = function(event) {
+          var response = JSON.parse(event.data);
+          console.log('response: '+event.data);
+          if (response.response_type === 'creation') {
+            if (response.success) {
+              $('#form-container').hide();
+              var $gameLabel = $('#game-label').show();
+              $gameLabel.find('big').text($gameLabel.find('big').text() + GAME_NAME);
+              if (response.created) {
+                GLOBAL.GAMES.start();
+                GLOBAL.PLAYER = 'white';
+              } else {
+                GLOBAL.GAMES.flip();
+                GLOBAL.GAMES.position(response.state);
+                GLOBAL.PLAYER = 'black';
+                $('#game-label').css('visibility', 'visible');
+              }
+            }
+          } else if (response.response_type === 'movement') {
+            console.log('movement response: ' + JSON.stringify(response));
+            if (response.moved) {
+              var currentGame = GLOBAL.GAMES[response.quadrant - 1];
+              if (response.player === GLOBAL.PLAYER) {
+              
+              } else {
+                var game = GLOBAL.GAMES[response.index];
+                game.logic.move({from: response.source, to: response.target});
+                game.board.position(game.logic.fen().split(' ')[0], false);
+                currentGame.cfg.draggable = true;
+                $('#move-waiter').hide();
+
+                if (typeof(currentGame.cfg.orientation) === 'undefined' || currentGame.cfg.orientation[0] !== currentGame.logic.turn()) {
+                  // currentGame.board.flip(); // fix later
+                }
+                // colorBoard('board' + response.quadrant);
+              }
+              GLOBAL.clearCurrentGlow();
+              GLOBAL.clearCurrentGlow = glowBox('board' + response.quadrant, currentGame.logic.turn());
+
+
+
+            }
+          } else if (response.response_type === 'opponent_found') {
+            $('#opp-waiter').hide();
+            $('#game-label').css('visibility', 'visible');
+            for (var i = 0; i < GLOBAL.GAMES.length; i++) {
+              GLOBAL.GAMES[i].cfg.draggable = true;
+            }              
+          }
+        };
+        SOCKET.onopen = function(event) {
+          console.log('websocket opened');
+          SOCKET.send(JSON.stringify({create: GAME_NAME}));
+        };
+        SOCKET.onclose = function(event) {
+          console.log('websocket closed');
+        };
+      }
+
+      $(function() {
+        GLOBAL = {GAMES: [], clearCurrentGlow: function(){}};
+        GLOBAL.GAMES.start = function() {
+          for (var i = 0; i < GLOBAL.GAMES.length; i++) {
+            $('#opp-waiter').show();
+            GLOBAL.GAMES[i].board.start();
+            GLOBAL.GAMES[i].cfg.draggable = false;           
+            GLOBAL.GAMES[i].logic.reset();
+          }
+        };
+
+        GLOBAL.GAMES.position = function(state) {
+          for (var i = 0; i < GLOBAL.GAMES.length; i++) {
+            GLOBAL.GAMES[i].board.position(state[i].split(' ')[0]);
+            GLOBAL.GAMES[i].logic.load(state[i]);
+          }
+        };
+
+        GLOBAL.GAMES.flip = function() {
+          for (var i = 0; i < GLOBAL.GAMES.length; i++) {
+            // GLOBAL.GAMES[i].board.flip();
+            // colorBoard(GLOBAL.GAMES[i].id);
+            GLOBAL.GAMES[i].cfg.draggable = false;
+            $('#move-waiter').show();
+          }
+          // $('#top-left').parent().parent().children().first().insertAfter($('#top-left').parent().parent().children().last());
+          // $('#top-left').parent().children().first().insertAfter($('#top-left').parent().children().last());  
+          // $('#bottom-left').parent().children().first().insertAfter($('#bottom-left').parent().children().last());
+        };
+
+        var game1 = ChessGame.createAndRegister('board1');
+        var game2 = ChessGame.createAndRegister('board2');
+        var game3 = ChessGame.createAndRegister('board3');
+        var game4 = ChessGame.createAndRegister('board4');
+      });
+    </script>
+  </body>
+</html>
