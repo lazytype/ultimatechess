@@ -12,3 +12,7 @@ Ultimate Chess is a variant of chess inspired by [Ultimate Tic-Tac-Toe](http://m
 * Easy as `python server.py --port=8888`
 
 ## To be continued...
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/lazytype/ultimatechess/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
